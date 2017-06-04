@@ -13,6 +13,10 @@ Approve article edits if :
 * ... edit was patrolled
 * ... edit has high ORES goodfaith scores
 
+Missing rules
+* ... edit was already reverted
+* ... no content from the edit is in the latest version
+
 ### Prerequisite
 
 Install pywikibot:
