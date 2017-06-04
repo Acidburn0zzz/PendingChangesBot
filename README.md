@@ -1,12 +1,12 @@
 # PendingChangesBot
 Bot tries to automatically review changes using Flagged Revisions in Wikipedia using predefined rules and ORES. 
 
-Homepage: https://github.com/zache-fi/PendingChangesBot
-Wikiproject: https://fi.wikipedia.org/wiki/Wikiprojekti:ORES
+* Homepage: https://github.com/zache-fi/PendingChangesBot
+* Wikiproject: https://fi.wikipedia.org/wiki/Wikiprojekti:ORES
 
 ### Rules for approval
 
-Approve if 
+Approve if :
 * ... edit was made by autopatrolled or autoreviewed user
 * ... edit was interwikichange
 * ... edit was made by bot
@@ -16,15 +16,18 @@ Approve if
 ### Prerequisite
 
 Install pywikibot:
+```
 $ git clone --recursive https://gerrit.wikimedia.org/r/pywikibot/core.git pywikibot-core
 $ cd pywikibot-core
 $ python generate_user_files.py
+```
 
 Running the script:
+```
 $ cd ..
 $ git clone https://github.com/zache-fi/PendingChangesBot.git
 $ python pywikibot-core/pwb.py PendingChangesBot/import_candidates.py -lang:fi -family:wikipedia -pendingchanges -simulate
-
+```
 ### Parameters
 -pendingchanges   Work on all NS0 articles where changes are pending
 
@@ -45,11 +48,14 @@ $ python pywikibot-core/pwb.py PendingChangesBot/import_candidates.py -lang:fi -
 ### Examples
 
 Review unreviewed articles without filling the pending changes queue
+```
 $ python pywikibot-core/pwb.py PendingChangesBot/pendingchanges.py -lang:fi -family:wikipedia -unreviewedpages -daylimit:30
-
+```
 Change ORES review parameters
+```
 $ python pywikibot-core/pwb.py PendingChangesBot/pendingchanges.py -lang:fi -family:wikipedia -unreviewedpages -ores_goodfaith_true_min:0.9 -ores_goodfaith_false_max:0.1
-
+```
 Review a single file
+```
 $ python pywikibot-core/pwb.py PendingChangesBot/pendingchanges.py -lang:fi -family:wikipedia -file:New_York
-
+```
