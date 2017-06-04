@@ -6,7 +6,7 @@ Bot tries to automatically review changes using Flagged Revisions in Wikipedia u
 
 ### Rules for approval
 
-Approve if :
+Approve article edits if :
 * ... edit was made by autopatrolled or autoreviewed user
 * ... edit was interwikichange
 * ... edit was made by bot

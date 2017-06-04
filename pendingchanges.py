@@ -40,7 +40,7 @@ Example:
 #
 from __future__ import absolute_import, unicode_literals
 
-import sys  
+import sys
 import re
 import json
 import pywikibot
@@ -329,6 +329,9 @@ class PendingChangesRobot(object):
         pywikibot.output(u'\n>>> %s <<<' % page.title())
         self.reset_pagecache()
 
+        if page.namespace() != 0:
+           return True
+
         site = page.site
         flaggedinfo=self.flaggedinfo(page)
         oresconfig=self.oresconfig
@@ -347,10 +350,7 @@ class PendingChangesRobot(object):
         for rev in rev_gen:
            if (rev["user"] not in self.botusers and rev["user"] not in self.autoreviewdusers):
               revlist.append(int(rev["revid"]))
-
             
-#        revlist=[int(rev["revid"]) for rev in rev_gen]
-
         # reset revision generator
         rev_gen = page.revisions(reverse=True, starttime=pending_since, content=False)
 
@@ -447,7 +447,7 @@ def main(*args):
 
     """
 
-
+    # Force utf8. Why is this needed? (FIXME)
     reload(sys)  
     sys.setdefaultencoding('utf8')
 
