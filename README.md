@@ -49,8 +49,11 @@ $ python pywikibot-core/pwb.py PendingChangesBot/import_candidates.py -lang:fi -
 -daylimit:N       Do not review page if version to be reviewed is older than N days
 
 -ores_goodfaith_true_min:n     Minimum value needed for ORES goodfaith true value
+
 -ores_goodfaith_true_max:n     Maximum value needed for ORES goodfaith true value
+
 -ores_goodfaith_false_min:n    Minimum value needed for ORES goodfaith false value
+
 -ores_goodfaith_false_max:n    Maximum value needed for ORES goodfaith false value
 
 ### Examples
@@ -63,9 +66,9 @@ Change ORES review parameters
 ```
 $ python pywikibot-core/pwb.py PendingChangesBot/pendingchanges.py -lang:fi -family:wikipedia -unreviewedpages -ores_goodfaith_true_min:0.9 -ores_goodfaith_false_max:0.1
 ```
-Review a single file
+Review a single page
 ```
-$ python pywikibot-core/pwb.py PendingChangesBot/pendingchanges.py -lang:fi -family:wikipedia -file:New_York
+$ python pywikibot-core/pwb.py PendingChangesBot/pendingchanges.py -lang:fi -family:wikipedia -page:New_York
 ```
 
 ### Tool labs support
