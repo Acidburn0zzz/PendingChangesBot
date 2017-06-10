@@ -1,5 +1,5 @@
 # PendingChangesBot
-Bot tries to automatically review changes using Flagged Revisions in Wikipedia using predefined rules and ORES. 
+PendingChangesBot is a Pywikibot script which tries to automatically review changes using Flagged Revisions in Wikipedia using predefined rules and ORES. 
 
 * Homepage: https://github.com/zache-fi/PendingChangesBot
 * Wikiproject: https://fi.wikipedia.org/wiki/Wikiprojekti:ORES
