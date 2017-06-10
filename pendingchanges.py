@@ -439,7 +439,7 @@ class PendingChangesRobot(object):
                    approve_reason="interwiki"
                    latest_ok=rev_id
 
-           state='OK' if approve_reason!="" else 'FAIL'
+           state='OK' if approve_reason!="" else 'NOT OK'
            pywikibot.output(u'%s\t%s Revision %d %s %s' % (state, "{:<15}".format(approve_reason), rev_id, rev_timestamp, rev_user))
 
            if approve_reason != "":
