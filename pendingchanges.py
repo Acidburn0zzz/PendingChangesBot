@@ -12,6 +12,8 @@ These command line parameters can be used to specify which pages to work on:
 -unreviewedpages  Work on all NS0 articles which have never been reviewed using 
                   Flagged revision
 
+-noformerbots     Do not autoreview former bots
+
 -noores           Do not use scores from ORES for approval
 
 -daylimit:N       Do not review page if the version that is being reviewed is older than N days
@@ -44,6 +46,7 @@ import sys
 import re
 import json
 import pywikibot
+from pywikibot import User
 from pywikibot import config
 from pywikibot import i18n
 from pywikibot import pagegenerators
@@ -61,15 +64,17 @@ docuReplacements = {
 
 class PendingChangesRobot(object):
 
-    def __init__(self, generator, oresconfig=None, daylimit=None):
+    def __init__(self, generator, oresconfig=None, daylimit=None, useformerbots=1):
         """Constructor."""
         self.generator = generator
         self.simulateMode = pywikibot.config.simulate
         self.autoreviewedusers = {}
         self.botusers = {}
+        self.formerbotusers = {}
         self.oressiteinfo=self.get_ores_siteinfo()
         self.oresconfig = oresconfig
         self.daylimit = daylimit
+        self.useformerbots=useformerbots
 
         # Page cache
         self._patrolledrevs=None
@@ -89,6 +94,34 @@ class PendingChangesRobot(object):
         site=pywikibot.Site()
         userlist = {ul['name']:ul for ul in site.botusers()}
         return userlist
+
+    def get_formerbotusers(self):
+        site=pywikibot.Site()
+        url=('http://tools.wmflabs.org/fiwiki-tools/pendingchanges/?action=formerbots&family=wikipedia&lang=%s' % site.lang)
+
+        try:
+            file=http.fetch(url)
+        except:
+            pywikibot.error("Reading %s failed",  url)
+        data = json.loads(file.decode("utf-8"))
+        userlist={name:1 for name in data["formerbots"]}
+        
+        return userlist
+
+    def test_reverted(self, page, rev_id, action):
+        site=pywikibot.Site()
+        url=('http://tools.wmflabs.org/fiwiki-tools/pendingchanges/?lang=%s&action=%s&family=wikipedia&rev_id=%d' % (site.lang, action, rev_id))
+        try:
+            file=http.fetch(url)
+        except:
+            pywikibot.error("Reading %s failed",  url)
+
+        data = json.loads(file.decode("utf-8"))        
+        if (str(rev_id) in data[action] 
+           and  data[action][str(rev_id)] == True):
+           return 1
+
+        return 0
 
     def get_ores_siteinfo(self):
         site=pywikibot.Site()
@@ -350,7 +383,7 @@ class PendingChangesRobot(object):
         for rev in rev_gen:
            if (rev["user"] not in self.botusers and rev["user"] not in self.autoreviewdusers):
               revlist.append(int(rev["revid"]))
-            
+
         # reset revision generator
         rev_gen = page.revisions(reverse=True, starttime=pending_since, content=False)
 
@@ -371,8 +404,17 @@ class PendingChangesRobot(object):
            elif rev_user in self.autoreviewdusers :
               approve_reason="autoreview"
               latest_ok=rev_id
+           elif rev_user in self.formerbotusers :
+              approve_reason="formerbot"
+              latest_ok=rev_id
            elif self.test_patrolledrevs(page, rev_id, pending_since):
               approve_reason="patrolled"
+              latest_ok=rev_id
+           elif self.test_reverted(page, rev_id, "reverted"):
+              approve_reason="reverted"
+              latest_ok=rev_id
+           elif self.test_reverted(page, rev_id, "revert"):
+              approve_reason="revert"
               latest_ok=rev_id
            elif self.test_oresrevs(rev_id, revlist, "goodfaith"):
               approve_reason="ores"
@@ -410,7 +452,11 @@ class PendingChangesRobot(object):
               comment=self.create_comment(approves)
               result=self.review(rev_id=latest_ok, comment=comment)
               if result:
-                 pywikibot.output('Reviewed revision: %d with comment: "%s"' % (latest_ok,comment))
+                 if self.simulateMode:
+                     pywikibot.output('Reviewed (simulated) revision: %d with comment: "%s"' % (latest_ok,comment))
+                 else:
+                     pywikibot.output('Reviewed revision: %d with comment: "%s"' % (latest_ok,comment))
+
 
     def run(self):
         site=pywikibot.Site()
@@ -419,6 +465,8 @@ class PendingChangesRobot(object):
 
         self.autoreviewdusers=self.get_autoreviewedusers()
         self.botusers=self.get_botusers()
+        if self.useformerbots:
+            self.formerbotusers=self.get_formerbotusers()
 
         """Check each page passed."""
         for page in self.generator:
@@ -471,6 +519,9 @@ def main(*args):
        }
     }
 
+    # Autoreview former bots
+    formerbots=1
+
     for arg in pywikibot.handle_args(args):
         ores_arg=re.search('ores_(.*?)_(true|false)_(min|max):([0-9.]*?)$', arg)
 
@@ -480,6 +531,8 @@ def main(*args):
             gen = unreviewdpagesGenerator()
         elif arg == '-noores':
             oresconfig=None
+        elif arg == '-noformerbots':
+            formerbots=0
         elif arg.startswith('-daylimit:'):
             try:
                 daylimit=int(arg[10:])
@@ -504,7 +557,7 @@ def main(*args):
 
     if gen:
         preloadingGen = pagegenerators.PreloadingGenerator(gen)
-        bot = PendingChangesRobot(preloadingGen, oresconfig, daylimit)
+        bot = PendingChangesRobot(preloadingGen, oresconfig, daylimit, formerbots)
         bot.run()
     else:
         pywikibot.showHelp('pendingchanges')
