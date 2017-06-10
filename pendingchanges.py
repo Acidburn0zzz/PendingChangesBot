@@ -300,9 +300,14 @@ class PendingChangesRobot(object):
         data = json.loads(file.decode("utf-8"))
 
         if data["query"] and data["query"]["pages"]:
-           for page in data["query"]["pages"]:
-               return data["query"]["pages"][page]
-        return None
+           pageid=str(page.pageid)
+           if pageid in data["query"]["pages"]:
+               return data["query"]["pages"][pageid]
+           else:
+               pywikibot.error("Flaggedinfo error. Page not found.")
+               exit(1)
+
+        return {}
 
     def login(self):
         if self.simulateMode:
@@ -361,6 +366,9 @@ class PendingChangesRobot(object):
     def treat(self, page):
         pywikibot.output(u'\n>>> %s <<<' % page.title())
         self.reset_pagecache()
+
+        if not page.exists():
+            return True
 
         if page.namespace() != 0:
            return True
