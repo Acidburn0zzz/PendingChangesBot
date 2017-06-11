@@ -102,7 +102,7 @@ class PendingChangesRobot(object):
         try:
             file=http.fetch(url)
         except:
-            pywikibot.error("Reading %s failed",  url)
+            pywikibot.error(u'Reading %s failed' %  url)
         data = json.loads(file.decode("utf-8"))
         userlist={name:1 for name in data["formerbots"]}
         
@@ -114,7 +114,7 @@ class PendingChangesRobot(object):
         try:
             file=http.fetch(url)
         except:
-            pywikibot.error("Reading %s failed",  url)
+            pywikibot.error(u'Reading %s failed' %  url)
 
         data = json.loads(file.decode("utf-8"))        
         if (str(rev_id) in data[action] 
@@ -140,13 +140,13 @@ class PendingChangesRobot(object):
     def get_oresrevs(self, rev_ids=[]):
         if self._oresrevs==None:
            site=pywikibot.Site()
-           url=('https://ores.wikimedia.org/scores/%swiki?models=damaging|reverted|goodfaith&revids=' % site.lang)
+           url=(u'https://ores.wikimedia.org/scores/%swiki?models=damaging|reverted|goodfaith&revids=' % site.lang)
            url=url + "|".join(str(key)  for key in rev_ids[:40])
 
            try:
               file=http.fetch(url)
            except:
-              pywikibot.error("Reading %s failed", url)
+              pywikibot.error(u'Reading %s failed' % url)
               time.sleep(10)
               file=http.fetch(url)
            data = json.loads(file.decode("utf-8"))
@@ -169,12 +169,13 @@ class PendingChangesRobot(object):
         if str(rev_id) in oresrevs:
            ores_rev=oresrevs[str(rev_id)]
            if model in ores_rev:
-              scorer=ores_rev[model]["probability"]
-              if (float(scorer["true"]) >= settings["true"]["min"]
-                 and float(scorer["true"]) <= settings["true"]["max"]
-                 and float(scorer["false"]) <= settings["false"]["max"]
-                 and float(scorer["false"]) >= settings["false"]["min"] ) :
-                 return True
+              if "probability" in ores_rev[model]:
+                  scorer=ores_rev[model]["probability"]
+                  if (float(scorer["true"]) >= settings["true"]["min"]
+                      and float(scorer["true"]) <= settings["true"]["max"]
+                      and float(scorer["false"]) <= settings["false"]["max"]
+                      and float(scorer["false"]) >= settings["false"]["min"] ) :
+                      return True
         return False
 
     def get_patrolledrevs(self, page, offset_time):
