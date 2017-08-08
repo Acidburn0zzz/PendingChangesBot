@@ -75,10 +75,14 @@ class PendingChangesRobot(object):
         self.oresconfig = oresconfig
         self.daylimit = daylimit
         self.useformerbots=useformerbots
+        self.seek_title=""
+#        self.seek_title="Luettelo_televisiosarjan_Vampyyripäiväkirjat_esineistä"
+#        self.seek_title="Myrkkysumakki"
 
         # Page cache
         self._patrolledrevs=None
         self._oresrevs=None
+	self.processed=0
 
     def reset_pagecache(self):
         self._patrolledrevs=None
@@ -145,12 +149,10 @@ class PendingChangesRobot(object):
 
            try:
               file=http.fetch(url)
+              data = json.loads(file.decode("utf-8"))
+              self._oresrevs=data
            except:
               pywikibot.error(u'Reading %s failed' % url)
-              time.sleep(10)
-              file=http.fetch(url)
-           data = json.loads(file.decode("utf-8"))
-           self._oresrevs=data
         return self._oresrevs
 
     def test_oresrevs(self, rev_id, revlist, model):
@@ -166,16 +168,17 @@ class PendingChangesRobot(object):
         settings=self.oresconfig[model]
         oresrevs=self.get_oresrevs(revlist)
 
-        if str(rev_id) in oresrevs:
-           ores_rev=oresrevs[str(rev_id)]
-           if model in ores_rev:
-              if "probability" in ores_rev[model]:
-                  scorer=ores_rev[model]["probability"]
-                  if (float(scorer["true"]) >= settings["true"]["min"]
-                      and float(scorer["true"]) <= settings["true"]["max"]
-                      and float(scorer["false"]) <= settings["false"]["max"]
-                      and float(scorer["false"]) >= settings["false"]["min"] ) :
-                      return True
+        if oresrevs != None:
+           if str(rev_id) in oresrevs:
+              ores_rev=oresrevs[str(rev_id)]
+              if model in ores_rev:
+                  if "probability" in ores_rev[model]:
+                      scorer=ores_rev[model]["probability"]
+                      if (float(scorer["true"]) >= settings["true"]["min"]
+                          and float(scorer["true"]) <= settings["true"]["max"]
+                          and float(scorer["false"]) <= settings["false"]["max"]
+                          and float(scorer["false"]) >= settings["false"]["min"] ) :
+                          return True
         return False
 
     def get_patrolledrevs(self, page, offset_time):
@@ -214,9 +217,15 @@ class PendingChangesRobot(object):
 
         if (len(addedwords) == 0 and len(removedwords)==0):
             return 1
-        elif (len(existingwords)>0):
+        elif (len(existingwords)==0):
             return 2
+        elif (len(existingwords)<3):
+            pywikibot.output("existingwords: %s\n" % json.dumps(existingwords,  ensure_ascii=False))
+            return 3
         else:
+#            pywikibot.output("\nremovedwords: %s" % json.dumps(removedwords))
+#            pywikibot.output("addedwords: %s" % json.dumps(addedwords))
+            pywikibot.output("existingwords: %s\n" % json.dumps(existingwords,  ensure_ascii=False))
             return 0
 
     def remove_interwiki(self, str):
@@ -273,6 +282,8 @@ class PendingChangesRobot(object):
         testresult=self.wordtest(parenttext, oldrevtext, latesttext);
         if testresult == 2:
            return "wordtest2"
+        if testresult == 3:
+           return "wordtest3"
         else:
            return ""
 
@@ -309,6 +320,12 @@ class PendingChangesRobot(object):
                exit(1)
 
         return {}
+
+    def test_contributingUsers(self, page):
+        for ul in page.contributingUsers():
+            if ul in self.autoreviewdusers:
+               return 1
+        return 0
 
     def login(self):
         if self.simulateMode:
@@ -365,7 +382,13 @@ class PendingChangesRobot(object):
 
 
     def treat(self, page):
-        pywikibot.output(u'\n>>> %s <<<' % page.title())
+        self.processed=self.processed+1
+        pywikibot.output(u'\n>>> %d – %s <<<' % (self.processed, page.title()))
+        if (self.seek_title!="" and page.title() != self.seek_title):
+            return True
+        else:
+            self.seek_title=""
+
         self.reset_pagecache()
 
         if not page.exists():
@@ -399,13 +422,16 @@ class PendingChangesRobot(object):
         latest_ok=0
         latest_timestamp=None
         approves=[]
-
         for rev in rev_gen:
+           t_comment=""
            approve_reason=""
            rev_id=int(rev["revid"])
            rev_user=rev["user"]
            rev_timestamp=rev["timestamp"]
            rev_parent_id=rev.parent_id
+
+           this_is_old_rev=datetime.datetime.now() > (rev_timestamp + datetime.timedelta(days=700))
+
 
            if rev_user in self.botusers:
               approve_reason="bot"
@@ -416,6 +442,9 @@ class PendingChangesRobot(object):
            elif rev_user in self.formerbotusers :
               approve_reason="formerbot"
               latest_ok=rev_id
+           elif rev_user == page.oldest_revision.user and this_is_old_rev and self.test_contributingUsers(page):
+              approve_reason="pagecreator"
+              latest_ok=rev_id            
            elif self.test_patrolledrevs(page, rev_id, pending_since):
               approve_reason="patrolled"
               latest_ok=rev_id
@@ -440,8 +469,29 @@ class PendingChangesRobot(object):
                    approve_reason="interwiki"
                    latest_ok=rev_id
 
+              elif test_result=="wordtest1":
+                   approve_reason="wordtest1"
+                   latest_ok=rev_id
+
+              elif test_result=="wordtest2":
+                   approve_reason="wordtest2"
+                   latest_ok=rev_id
+
+              elif test_result=="wordtest3":
+                   t_oresrevs=self.get_oresrevs([rev_id])
+                   str_rev_id=str(rev_id)
+                   if str_rev_id in t_oresrevs and "probability" in t_oresrevs[str_rev_id]["goodfaith"] :
+                      t_goodfaith_true=t_oresrevs[str_rev_id]["goodfaith"]["probability"]["true"]
+                      t_goodfaith_false=t_oresrevs[str_rev_id]["goodfaith"]["probability"]["false"]
+                      t_comment+=(' goodfaith (t/f: %.2f/%.2f)' % (t_goodfaith_true, t_goodfaith_false))
+
+                      if t_goodfaith_true > 0.75:
+                          approve_reason="wordtest3"
+                          latest_ok=rev_id
+
+
            state='OK' if approve_reason!="" else 'NOT OK'
-           pywikibot.output(u'%s\t%s Revision %d %s %s' % (state, "{:<15}".format(approve_reason), rev_id, rev_timestamp, rev_user))
+           pywikibot.output(u'%s\t%s Revision %d %s %s %s' % (state, "{:<15}".format(approve_reason), rev_id, rev_timestamp, rev_user, t_comment))
 
            if approve_reason != "":
               latest_ok=rev_id
@@ -509,7 +559,7 @@ def main(*args):
     sys.setdefaultencoding('utf8')
 
     # Don't approve the edit if it's older than N days
-    daylimit=None
+    daylimit=30
 
     # Page generator
     gen = None
